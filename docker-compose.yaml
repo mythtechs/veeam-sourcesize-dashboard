@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  veeam-ui:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - VSPC_URL=<Your_URL_Here>
+      - API_TOKEN=<Your_Token_Here>
+    restart: unless-stopped
