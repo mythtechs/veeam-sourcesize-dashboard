@@ -1,4 +1,7 @@
-import os, requests
+
+
+import os
+import requests
 from flask import Flask
 from collections import defaultdict
 
@@ -11,7 +14,8 @@ def api(u):
     try:
         r = requests.get(u, headers=HEADERS, timeout=30)
         return r.json() if r.status_code == 200 else {"error": r.status_code}
-    except: return {"error": "failed"}
+    except:
+        return {"error": "failed"}
 
 def get_companies():
     d = api(f"{VSPC_URL}/v3/organizations/companies")
@@ -33,10 +37,12 @@ def get_workstations():
     if "error" in d or not d.get("data"): return []
     r = []
     for i in d["data"]:
+        org_uid = i.get("organizationUid")
         name = i.get("jobName", "Unknown")
-        prefix = name.split(" - ",1)[0] if " - " in name else name[:15]
         size = round((i.get("sourceSize") or 0) / (1024**3), 2)
-        r.append({"prefix": prefix, "size": size})
+        # Use organizationUid if available, else fallback to job name prefix
+        group_key = org_uid if org_uid else (name.split(" - ",1)[0] if " - " in name else name[:15])
+        r.append({"group": group_key, "size": size})
     return r
 
 @app.route("/")
@@ -51,11 +57,17 @@ def index():
         vm_sum[name] += round((v.get("usedSourceSize") or 0) / (1024**3), 2)
     vm_list = sorted([{"c":k,"t":round(v,2)} for k,v in vm_sum.items() if v>0], key=lambda x:x["c"].lower())
 
-    # Workstations
+    # Workstations — grouped by organizationUid (fallback to prefix)
     ws_sum = defaultdict(float)
     for w in get_workstations():
-        ws_sum[w["prefix"]] += w["size"]
-    ws_list = sorted([{"c":k,"t":round(v,2)} for k,v in ws_sum.items() if v>0], key=lambda x:x["c"].lower())
+        ws_sum[w["group"]] += w["size"]
+    ws_list = []
+    for group, total in ws_sum.items():
+        if group in comp:  # If it's an organizationUid, use company name
+            ws_list.append({"c": comp[group], "t": round(total, 2)})
+        else:  # Else, use the prefix as-is
+            ws_list.append({"c": group, "t": round(total, 2)})
+    ws_list = sorted(ws_list, key=lambda x: x["c"].lower())
 
     return f"""
     <!DOCTYPE html>
@@ -90,7 +102,7 @@ def index():
             </div>
 
             <div class="panel">
-                <h2>Workstations - Summary by Job Prefix</h2>
+                <h2>Workstations - Summary by Tenant/Prefix</h2>
                 <table>
                     <tr><th>Tenant / Prefix</th><th>Total GB</th></tr>
                     {''.join(f"<tr><td>{x['c']}</td><td>{x['t']}</td></tr>" for x in ws_list)}
@@ -107,4 +119,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
