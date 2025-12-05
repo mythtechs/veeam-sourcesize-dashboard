@@ -1,11 +1,19 @@
 version: '3.8'
 
+volumes:
+  ubs-veeam_dashboard:
+    external: true
+
 services:
-  veeam-ui:
+  veeam-dashboard:
     build: .
+    container_name: veeam-dashboard
     ports:
       - "5000:5000"
     environment:
-      - VSPC_URL=<Your_URL_Here>
-      - API_TOKEN=<Your_Token_Here>
+      - API_TOKEN=${API_TOKEN}
+    volumes:
+      - ubs-veeam_dashboard:/data
     restart: unless-stopped
+    stdin_open: true
+    tty: true
