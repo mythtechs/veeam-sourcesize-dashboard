@@ -4,7 +4,7 @@ Real-time dashboard showing:
 - VM source sizes grouped by company
 - Workstation backup sizes grouped by job name prefix (the only reliable method on this VSPC)
 
-Tested and working 100% on `veeam.adeptnetworks.com:1280`
+Tested and working 100% 
 
 ## Quick Start
 
