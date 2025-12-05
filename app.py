@@ -42,6 +42,8 @@ def get_workstations():
 @app.route("/")
 def index():
     comp = get_companies()
+    
+    # VMs
     vm_sum = defaultdict(float)
     for v in get_vms():
         org = v.get("organizationUid","")
@@ -49,22 +51,60 @@ def index():
         vm_sum[name] += round((v.get("usedSourceSize") or 0) / (1024**3), 2)
     vm_list = sorted([{"c":k,"t":round(v,2)} for k,v in vm_sum.items() if v>0], key=lambda x:x["c"].lower())
 
+    # Workstations
     ws_sum = defaultdict(float)
     for w in get_workstations():
         ws_sum[w["prefix"]] += w["size"]
     ws_list = sorted([{"c":k,"t":round(v,2)} for k,v in ws_sum.items() if v>0], key=lambda x:x["c"].lower())
 
     return f"""
-    <h1 style="color:#006400">Veeam Backup Sizes - Adept Networks</h1>
-    <button onclick="location.reload()" style="padding:15px 30px;background:#006400;color:white;border:none;font-size:18px;cursor:pointer">Pull Fresh Data</button>
-    <h2>Virtual Machines - Summary by Company</h2>
-    <table border="1" style="width:100%"><tr style="background:#006400;color:white"><th>Company</th><th>Total GB</th></tr>
-    {''.join(f"<tr><td>{x['c']}</td><td>{x['t']}</td></tr>" for x in vm_list)}</table>
-    <h2>Workstations - Summary by Job Prefix</h2>
-    <table border="1" style="width:100%"><tr style="background:#006400;color:white"><th>Tenant / Prefix</th><th>Total GB</th></tr>
-    {''.join(f"<tr><td>{x['c']}</td><td>{x['t']}</td></tr>" for x in ws_list)}</table>
-    <p><strong>VMs:</strong> {len(get_vms())} | <strong>Workstation Jobs:</strong> {len(get_workstations())}</p>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Veeam Dashboard - Adept Networks</title>
+        <meta charset="utf-8">
+        <style>
+            body {{font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5;}}
+            h1 {{color: #006400; text-align: center;}}
+            button {{padding: 15px 30px; background: #006400; color: white; border: none; font-size: 18px; cursor: pointer; display: block; margin: 20px auto;}}
+            .container {{display: flex; gap: 30px; flex-wrap: wrap; justify-content: center;}}
+            .panel {{flex: 1; min-width: 450px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);}}
+            h2 {{color: #006400; margin-top: 0;}}
+            table {{width: 100%; border-collapse: collapse; margin-top: 10px;}}
+            th, td {{border: 1px solid #ccc; padding: 10px; text-align: left;}}
+            th {{background: #006400; color: white;}}
+            .stats {{text-align: center; margin: 30px 0; font-size: 18px; color: #333;}}
+        </style>
+    </head>
+    <body>
+        <h1>Veeam Backup Sizes - Adept Networks</h1>
+        <button onclick="location.reload()">Pull Fresh Data</button>
+
+        <div class="container">
+            <div class="panel">
+                <h2>Virtual Machines - Summary by Company</h2>
+                <table>
+                    <tr><th>Company</th><th>Total GB</th></tr>
+                    {''.join(f"<tr><td>{x['c']}</td><td>{x['t']}</td></tr>" for x in vm_list)}
+                </table>
+            </div>
+
+            <div class="panel">
+                <h2>Workstations - Summary by Job Prefix</h2>
+                <table>
+                    <tr><th>Tenant / Prefix</th><th>Total GB</th></tr>
+                    {''.join(f"<tr><td>{x['c']}</td><td>{x['t']}</td></tr>" for x in ws_list)}
+                </table>
+            </div>
+        </div>
+
+        <div class="stats">
+            <strong>VMs:</strong> {len(get_vms())} | <strong>Workstation Jobs Found:</strong> {len(get_workstations())}
+        </div>
+    </body>
+    </html>
     """
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
